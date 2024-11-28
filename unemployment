@@ -1,0 +1,102 @@
+from google.colab import files
+
+# Upload the file manually
+uploaded = files.upload()
+
+# List the uploaded file names
+print(uploaded)
+# Load the dataset
+file_path = "global_unemployment_data.csv"  # Update with the uploaded file's name
+df = pd.read_csv(file_path)
+
+# Display the first few rows to ensure it loaded correctly
+print(df.head())
+# Group by age categories and sum values across years
+age_data = df.groupby('age_categories').sum().iloc[:, 4:]  # Selecting year columns (2014-2024)
+
+# Convert column names to strings
+age_data.columns = age_data.columns.astype(str)
+
+# Plot the area chart
+plt.figure(figsize=(12, 6))
+for age in age_data.index:
+    plt.fill_between(age_data.columns, age_data.loc[age], label=age, alpha=0.5)
+
+plt.title('Unemployment Trends by Age Categories (2014-2024)', fontsize=16)
+plt.xlabel('Year', fontsize=12)
+plt.ylabel('Unemployment Count', fontsize=12)
+plt.legend(title='Age Categories', loc='upper left')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+# Group by sex and age categories, then sum values across years
+sex_data = df.groupby(['sex', 'age_categories']).sum().iloc[:, 4:]  # Selecting year columns
+
+# Separate male and female data
+male_data = sex_data.loc['Male']
+female_data = sex_data.loc['Female']
+
+# Calculate bubble sizes (sum of unemployment counts)
+bubble_sizes = male_data.sum(axis=1) + female_data.sum(axis=1)
+
+# Plot the bubble chart
+plt.figure(figsize=(10, 6))
+plt.scatter(male_data.sum(axis=1), female_data.sum(axis=1),
+            s=bubble_sizes, alpha=0.7, c='skyblue', edgecolors='black')
+
+plt.title('Male vs Female Unemployment by Age Category', fontsize=16)
+plt.xlabel('Male Unemployment', fontsize=12)
+plt.ylabel('Female Unemployment', fontsize=12)
+plt.grid(alpha=0.5)
+
+# Annotate points with age categories
+for i, age in enumerate(male_data.index):
+    plt.annotate(age, (male_data.sum(axis=1).iloc[i], female_data.sum(axis=1).iloc[i]))
+
+plt.show()
+# Group by country and sum values across years
+country_data = df.groupby('country_name').sum().iloc[:, 4:]  # Selecting year columns
+
+# Normalize the data for better comparison
+normalized_data = country_data / country_data.max()
+
+# Prepare the radar chart data
+categories = normalized_data.columns.tolist()
+angles = [n / float(len(categories)) * 2 * np.pi for n in range(len(categories))]
+angles += angles[:1]  # Complete the circle
+
+# Plot the radar chart
+plt.figure(figsize=(8, 8))
+ax = plt.subplot(111, polar=True)
+
+# Plot for the first 5 countries
+for country in normalized_data.index[:5]:
+    values = normalized_data.loc[country].values.flatten().tolist()
+    values += values[:1]  # Complete the circle
+    ax.plot(angles, values, label=country, linewidth=2)
+    ax.fill(angles, values, alpha=0.25)
+
+# Add labels and legend
+plt.title('Unemployment Trends Across Countries (Normalized)', fontsize=16)
+plt.xticks(angles[:-1], categories, color='black', fontsize=10)
+plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+plt.show()
+import waterfall_chart
+
+# Select a specific country
+country_name = "Country_Name"  # Replace with an actual country from your dataset
+country_data = df[df['country_name'] == country_name].iloc[:, 4:].sum()
+
+# Calculate yearly differences
+yearly_differences = country_data.diff().fillna(0)
+
+# Prepare the data for the waterfall chart
+labels = yearly_differences.index.astype(str)
+values = yearly_differences.values
+
+# Plot the waterfall chart
+plt.figure(figsize=(12, 6))
+waterfall_chart.plot(labels, values, Title=f'Unemployment Trends for {country_name} (Waterfall Chart)')
+plt.xlabel('Year', fontsize=12)
+plt.ylabel('Unemployment Change', fontsize=12)
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
